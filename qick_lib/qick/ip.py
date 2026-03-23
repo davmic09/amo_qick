@@ -265,7 +265,7 @@ class QickMetadata:
             next_type = self.mod2type(next_block)
             if next_type in goal_types:
                 return (next_block, port, next_type)
-            elif next_type in ["axis_clock_converter", "axis_dwidth_converter", "axis_register_slice", "axis_broadcaster", "cordic"]:
+            elif next_type in ["axis_clock_converter", "axis_dwidth_converter", "axis_register_slice", "axis_broadcaster"]:
                 next_port = 'S_AXIS'
             elif next_type == "axis_cdcsync_v1":
                 # port name is of the form 'm4_axis' - follow corresponding input 's4_axis'
@@ -276,6 +276,8 @@ class QickMetadata:
                 next_port = 's_axis'
             elif next_type == "axis_reorder_iq_v1":
                 next_port = 's_axis'
+            elif next_type == "cordic": #Isolating changes to make cordic debugging easier
+                next_port = 'S_AXIS'
             else:
                 raise RuntimeError("failed to trace back from %s - unrecognized IP block %s" % (start_block, next_block))
 
@@ -343,6 +345,7 @@ class QickMetadata:
                 # if we traced to a block that we don't recognize, mark as a dead end
                 dead_ends.append(block)
         if len(found) != 1:
+            print(found)
             raise RuntimeError("traced forward from %s for one block of type %s, but found %s (and dead ends %s)" % (start_block, goal_types, found, dead_ends))
         return found[0]
 
