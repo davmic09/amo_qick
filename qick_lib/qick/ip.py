@@ -329,6 +329,8 @@ class QickMetadata:
                 to_check.append((block, "m_axis"))
             elif blocktype == "axis_reorder_iq_v1":
                 to_check.append((block, "m_axis"))
+            elif blocktype in ("axis_avg_buffer", "axis_weighted_buffer"):
+                to_check.append((block, "M_AXIS"))
             elif blocktype == "qick_xtalk" and port == 'wave_i':
                 # we only want to trace the "primary" xtalk port
                 to_check.append((block, "wave_o"))
