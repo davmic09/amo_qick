@@ -262,7 +262,7 @@ class QickMetadata:
             next_type = self.mod2type(next_block)
             if next_type in goal_types:
                 return (next_block, port, next_type)
-            elif next_type in ["axis_clock_converter", "axis_dwidth_converter", "axis_register_slice", "axis_broadcaster"]:
+            elif next_type in ["axis_clock_converter", "axis_dwidth_converter", "axis_register_slice", "axis_broadcaster", "cordic"]:
                 next_port = 'S_AXIS'
             elif next_type == "axis_cdcsync_v1":
                 # port name is of the form 'm4_axis' - follow corresponding input 's4_axis'
@@ -332,6 +332,8 @@ class QickMetadata:
             elif blocktype == "qick_xtalk" and port == 'wave_i':
                 # we only want to trace the "primary" xtalk port
                 to_check.append((block, "wave_o"))
+            elif blocktype == "cordic":
+                to_check.append((block, "M_AXIS"))
             else:
                 # if we traced to a block that we don't recognize, mark as a dead end
                 dead_ends.append(block)
@@ -415,7 +417,72 @@ class QickMetadata:
             dma_path = block
             return dma_path, switch_path, switch_ch
         else:
-            raise RuntimeError("tracing port %s from block %s: expected to find axi_dma or axis_switch, found %s instead"%(start_port, start_block, blocktype))
+            # Allow pass-through/custom IPs in the path (e.g. cordic, width converters).
+            # Try to trace forward from the encountered block until we find an axi_dma
+            # or axis_switch. If that fails, raise the original error.
+            try:
+                (found_block, found_port, found_type) = self.trace_forward(block, port, ['axi_dma', 'axis_switch'])
+            except RuntimeError:
+                # fallback: do a BFS-style forward search for reachable axi_dma/axis_switch
+                to_check = [(block, port)]
+                found = []
+                dead_ends = []
+                seen = set()
+                while to_check:
+                    b, p = to_check.pop(0)
+                    if (b, p) in seen:
+                        continue
+                    seen.add((b, p))
+                    trace_result = self.trace_bus(b, p)
+                    if len(trace_result) == 0:
+                        dead_ends.append(b)
+                        continue
+                    ((nb, nport),) = trace_result
+                    nbtype = self.mod2type(nb)
+                    if nbtype in ['axi_dma', 'axis_switch']:
+                        found.append((nb, nport, nbtype))
+                    elif nbtype == 'axis_broadcaster':
+                        for iOut in range(int(self.get_param(nb, 'NUM_MI'))):
+                            to_check.append((nb, "M%02d_AXIS" % (iOut)))
+                    elif nbtype == 'axis_combiner' and nport == 'S00_AXIS':
+                        to_check.append((nb, 'M_AXIS'))
+                    elif nbtype == 'axis_clock_converter':
+                        to_check.append((nb, 'M_AXIS'))
+                    elif nbtype == 'axis_register_slice':
+                        to_check.append((nb, 'M_AXIS'))
+                    elif nbtype == 'axis_register_slice_nb':
+                        to_check.append((nb, 'm_axis'))
+                    elif nbtype == 'axis_reorder_iq_v1':
+                        to_check.append((nb, 'm_axis'))
+                    elif nbtype == 'qick_xtalk' and nport == 'wave_i':
+                        to_check.append((nb, 'wave_o'))
+                    elif nbtype == 'cordic':
+                        to_check.append((nb, 'M_AXIS'))
+                    else:
+                        dead_ends.append(nb)
+
+                if len(found) == 0:
+                    raise RuntimeError("tracing port %s from block %s: expected to find axi_dma or axis_switch, found %s instead" % (start_port, start_block, blocktype))
+                if len(found) > 1:
+                    raise RuntimeError("traced forward from %s for axi_dma/axis_switch and found multiple matches: %s (dead ends %s)" % ((block, port), found, dead_ends))
+                (found_block, found_port, found_type) = found[0]
+
+            if found_type == 'axi_dma':
+                # found DMA downstream of a pass-through block
+                return found_block, None, None
+            elif found_type == 'axis_switch':
+                # found a switch downstream; determine channel and then DMA
+                switch_path = found_block
+                switch_ch = int(found_port.split('_')[0][1:])
+                ((block_after_switch, port_after_switch),) = self.trace_bus(found_block, switch_common)
+                blocktype_after = self.mod2type(block_after_switch)
+                if blocktype_after != 'axi_dma':
+                    raise RuntimeError("tracing port %s from block %s: expected to find axi_dma after axis_switch, found %s instead" % (start_port, start_block, blocktype_after))
+                dma_path = block_after_switch
+                return dma_path, switch_path, switch_ch
+            else:
+                # should not reach here, but be safe
+                raise RuntimeError("tracing port %s from block %s: expected to find axi_dma or axis_switch, found %s instead" % (start_port, start_block, blocktype))
 
     def trace_clk_back(self, start_block, start_port):
         """Follow the clock backwards from a given block and port.
