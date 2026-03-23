@@ -312,7 +312,7 @@ class QickMetadata:
 
         while to_check:
             block, port = to_check.pop(0)
-            print("block: %s, port: %s" % (block, port))
+            #("block: %s, port: %s" % (block, port))
             trace_result = self.trace_bus(block, port)
             # if the port we tried to trace is unconnected, mark as a dead end
             if len(trace_result)==0:
@@ -320,7 +320,7 @@ class QickMetadata:
                 continue
             ((block, port),) = trace_result
             blocktype = self.mod2type(block)
-            print(blocktype)
+            #print(blocktype)
             if blocktype in goal_types:
                 found.append((block, port, blocktype))
             elif blocktype == "axis_broadcaster":
@@ -351,7 +351,7 @@ class QickMetadata:
                 dead_ends.append(block)
             
         if len(found) != 1:
-            print(found)
+            #print(found)
             raise RuntimeError("traced forward from %s for one block of type %s, but found %s (and dead ends %s)" % (start_block, goal_types, found, dead_ends))
         return found[0]
 
