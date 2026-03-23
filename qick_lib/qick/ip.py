@@ -335,7 +335,7 @@ class QickMetadata:
                 # we only want to trace the "primary" xtalk port
                 to_check.append((block, "wave_o"))
             elif blocktype == "cordic":
-                to_check.append((block, "M_AXIS"))
+                to_check.append((block, "M_AXIS_DOUT"))
             else:
                 # if we traced to a block that we don't recognize, mark as a dead end
                 dead_ends.append(block)
