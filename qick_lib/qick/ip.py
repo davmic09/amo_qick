@@ -181,12 +181,15 @@ class QickMetadata:
         :rtype: list
         """
         fullport = blockname+"/"+portname
-        # the net connected to this port
-        netname = parser.pins[fullport]
+        # the net connected to this port (use safe lookups to tolerate HWH variations)
+        netname = parser.pins.get(fullport)
+        if netname is None:
+            return []
         if netname == '__NOC__':
             return []
         # get the list of other ports on this net, discard the port we started at and ILA ports
-        return [x.rsplit('/', maxsplit=1) for x in parser.nets[netname] if x != fullport and 'system_ila_' not in x]
+        ports = parser.nets.get(netname, [])
+        return [x.rsplit('/', maxsplit=1) for x in ports if x != fullport and 'system_ila_' not in x]
 
     def get_fclk(self, blockname, portname):
         """
@@ -459,7 +462,8 @@ class QickMetadata:
                     elif nbtype == 'qick_xtalk' and nport == 'wave_i':
                         to_check.append((nb, 'wave_o'))
                     elif nbtype == 'cordic':
-                        to_check.append((nb, 'M_AXIS'))
+                        # cordic output port can be named M_AXIS_DOUT in some HWHs
+                        to_check.append((nb, 'M_AXIS_DOUT'))
                     else:
                         dead_ends.append(nb)
 
