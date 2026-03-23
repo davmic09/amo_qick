@@ -318,6 +318,7 @@ class QickMetadata:
                 continue
             ((block, port),) = trace_result
             blocktype = self.mod2type(block)
+            print(blocktype)
             if blocktype in goal_types:
                 found.append((block, port, blocktype))
             elif blocktype == "axis_broadcaster":
@@ -344,6 +345,7 @@ class QickMetadata:
             else:
                 # if we traced to a block that we don't recognize, mark as a dead end
                 dead_ends.append(block)
+            
         if len(found) != 1:
             print(found)
             raise RuntimeError("traced forward from %s for one block of type %s, but found %s (and dead ends %s)" % (start_block, goal_types, found, dead_ends))
