@@ -278,6 +278,8 @@ class QickMetadata:
                 next_port = 's_axis'
             elif next_type == "cordic": #Isolating changes to make cordic debugging easier
                 next_port = 'S_AXIS'
+            elif next_type == "axis_dwidth_converter":
+                next_port = 'S_AXIS'
             else:
                 raise RuntimeError("failed to trace back from %s - unrecognized IP block %s" % (start_block, next_block))
 
@@ -342,6 +344,8 @@ class QickMetadata:
                 to_check.append((block, "wave_o"))
             elif blocktype == "cordic":
                 to_check.append((block, "M_AXIS_DOUT"))
+            elif blocktype == "axis_dwidth_converter":
+                to_check.append((block, 'M_AXIS'))
             else:
                 # if we traced to a block that we don't recognize, mark as a dead end
                 dead_ends.append(block)
