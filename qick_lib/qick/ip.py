@@ -308,7 +308,7 @@ class QickMetadata:
 
         while to_check:
             block, port = to_check.pop(0)
-            #print("block: %s, port: %s" % (block, port))
+            print("block: %s, port: %s" % (block, port))
             trace_result = self.trace_bus(block, port)
             # if the port we tried to trace is unconnected, mark as a dead end
             if len(trace_result)==0:
