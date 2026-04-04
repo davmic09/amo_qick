@@ -320,7 +320,7 @@ class QickMetadata:
                 continue
             ((block, port),) = trace_result
             blocktype = self.mod2type(block)
-            print(blocktype)
+            # print(blocktype)
             if blocktype in goal_types:
                 found.append((block, port, blocktype))
             elif blocktype == "axis_broadcaster":
